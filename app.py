@@ -265,7 +265,7 @@ with raw_column:
 
     st.pyplot(
         raw_figure,
-        use_container_width=True,
+        width="stretch",
     )
 
     plt.close(raw_figure)
@@ -277,7 +277,7 @@ with stretched_column:
 
     st.pyplot(
         stretched_figure,
-        use_container_width=True,
+        width="stretch",
     )
 
     plt.close(stretched_figure)
@@ -348,7 +348,7 @@ histogram_figure.tight_layout()
 
 st.pyplot(
     histogram_figure,
-    use_container_width=True,
+    width="stretch",
 )
 
 plt.close(histogram_figure)
