@@ -59,3 +59,24 @@ Clone the repository:
 ```bash
 git clone https://github.com/Hussain1802/astrostretch.git
 cd astrostretch
+```
+
+Install the required packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+Start the app:
+
+```bash
+streamlit run app.py
+```
+
+## Built with
+
+- Python
+- Streamlit
+- NumPy
+- Astropy
+- Matplotlib
