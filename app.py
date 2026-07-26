@@ -1,4 +1,5 @@
 from io import BytesIO
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,7 +15,7 @@ st.set_page_config(
 
 
 def make_image_figure(image):
-    """Create a borderless image figure that matches Streamlit's dark background."""
+    """Create a borderless image figure."""
     figure, axis = plt.subplots(
         figsize=(7, 7),
         facecolor="#0e1117",
@@ -40,7 +41,7 @@ def make_image_figure(image):
 
 
 def apply_stretch(image, method, strength):
-    """Apply the selected brightness transformation."""
+    """Apply the selected brightness stretch."""
     if method == "Linear":
         return image
 
@@ -55,14 +56,41 @@ st.caption(
     "Explore faint detail hidden inside astronomical FITS images."
 )
 
-uploaded_file = st.file_uploader(
-    "Upload a FITS image",
-    type=["fits", "fit", "fts"],
+image_source = st.radio(
+    "Choose an image source",
+    options=[
+        "Try the sample image",
+        "Upload my own FITS image",
+    ],
+    horizontal=True,
 )
 
-if uploaded_file is None:
-    st.info("Upload a telescope image to begin.")
-    st.stop()
+if image_source == "Try the sample image":
+    fits_source = (
+        Path(__file__).parent
+        / "sample_data"
+        / "astrostretch_test_nebula.fits"
+    )
+
+    file_name = "astrostretch_test_nebula.fits"
+
+    st.caption(
+        "The built-in sample is synthetic and is included to demonstrate "
+        "how the image-stretching controls work."
+    )
+
+else:
+    uploaded_file = st.file_uploader(
+        "Upload a FITS image",
+        type=["fits", "fit", "fts"],
+    )
+
+    if uploaded_file is None:
+        st.info("Upload a telescope image to begin.")
+        st.stop()
+
+    fits_source = uploaded_file
+    file_name = uploaded_file.name
 
 
 # Search the FITS file for the first usable two-dimensional image.
@@ -70,9 +98,10 @@ image_data = None
 image_header = None
 
 try:
-    uploaded_file.seek(0)
+    if hasattr(fits_source, "seek"):
+        fits_source.seek(0)
 
-    with fits.open(uploaded_file, memmap=False) as hdul:
+    with fits.open(fits_source, memmap=False) as hdul:
         for hdu in hdul:
             if hdu.data is None:
                 continue
@@ -108,7 +137,7 @@ maximum_value = float(np.max(finite_pixels))
 dynamic_range = maximum_value - minimum_value
 
 
-st.success(f"Loaded {uploaded_file.name}")
+st.success(f"Loaded {file_name}")
 
 stats_columns = st.columns(4)
 
@@ -202,15 +231,19 @@ stretch_strength = st.slider(
 
 if stretch_method == "Linear":
     st.caption(
-        "Linear keeps evenly spaced brightness values evenly spaced."
+        "Linear stretching preserves evenly spaced brightness differences."
     )
+
 elif stretch_method == "Logarithmic":
     st.caption(
-        "Logarithmic stretching strongly lifts faint pixels while compressing bright ones."
+        "Logarithmic stretching strongly lifts faint pixels while "
+        "compressing brighter regions."
     )
+
 else:
     st.caption(
-        "Asinh stretching reveals faint structure while keeping bright regions relatively controlled."
+        "Asinh stretching reveals faint structure while keeping bright "
+        "regions relatively controlled."
     )
 
 
@@ -286,8 +319,7 @@ with stretched_column:
 st.divider()
 st.subheader("Pixel-value histogram")
 
-# Extreme values can squash the useful part of a histogram,
-# so the graph focuses on the central 99.8% of the pixels.
+# Very extreme values can squash the useful part of the histogram.
 histogram_low = np.percentile(finite_pixels, 0.1)
 histogram_high = np.percentile(finite_pixels, 99.9)
 
@@ -296,7 +328,7 @@ histogram_pixels = finite_pixels[
     & (finite_pixels <= histogram_high)
 ]
 
-# Limit the number of plotted pixels so very large files remain responsive.
+# Large images are sampled to keep the app responsive.
 if histogram_pixels.size > 250_000:
     sample_step = histogram_pixels.size // 250_000
     histogram_pixels = histogram_pixels[::sample_step]
@@ -374,7 +406,7 @@ plt.imsave(
 png_buffer.seek(0)
 
 download_name = (
-    uploaded_file.name.rsplit(".", 1)[0]
+    file_name.rsplit(".", 1)[0]
     + "_stretched.png"
 )
 
